@@ -1,4 +1,4 @@
-import { User } from "../stores/authStore";
+import { User } from "../types/user";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";

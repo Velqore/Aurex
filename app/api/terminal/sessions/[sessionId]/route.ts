@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 // Close terminal session
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -25,7 +25,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
     const session = terminalDatabase.getSession(sessionId);
 
     if (!session) {
@@ -54,7 +54,7 @@ export async function DELETE(
 // Get session details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -72,7 +72,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
     const session = terminalDatabase.getSession(sessionId);
 
     if (!session) {
