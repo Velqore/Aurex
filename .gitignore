@@ -1,38 +1,58 @@
-# Config
-Config/
-
-# Node dependencies
+# Dependencies
 node_modules/
+/.pnp
+.pnp.js
 
-# Build output
-dist/
-build/
-out/
+# Testing
+/coverage
 
-# Logs
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
-pnpm-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+terminal-server.log
+enhanced-terminal.log
+
+# Temporary files
+.tmp*
+*.tmp
+
+# Cache
+.cache/
 
 # OS generated files
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-
 # Coverage and test output
 coverage/
 *.lcov
-
-# Misc
-*.log
