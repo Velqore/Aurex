@@ -1,3 +1,0 @@
-Welcome to AUREX Terminal!
-This is your secure sandbox environment.
-You can create files, install packages, and run commands safely here.
