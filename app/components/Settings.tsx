@@ -26,6 +26,7 @@ import {
   Palette,
   Crown,
   CreditCard,
+  Info,
 } from "lucide-react";
 import { useAuthStore } from "../../lib/stores/authStore";
 import { useAppStore } from "../../lib/stores/appStore";
@@ -61,6 +62,7 @@ export default function Settings({ user }: SettingsProps) {
     { id: "privacy", label: "Privacy", icon: Eye },
     { id: "interface", label: "Interface", icon: Monitor },
     { id: "data", label: "Data & Export", icon: Database },
+    { id: "about", label: "About", icon: Info },
   ];
 
   const handlePreferenceChange = (
@@ -665,6 +667,237 @@ export default function Settings({ user }: SettingsProps) {
     </div>
   );
 
+  const renderAboutSettings = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-cyber-blue mb-4">
+          About AUREX
+        </h3>
+        <div className="space-y-6">
+          {/* Company Information */}
+          <div className="cyber-panel p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-md font-semibold text-cyber-blue flex items-center">
+                <Globe className="h-5 w-5 mr-2" />
+                Company Information
+              </h4>
+              {/* Company Logo */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <img 
+                    src="https://media.licdn.com/dms/image/v2/D560BAQEqsudrfYluXQ/company-logo_100_100/B56ZdTAnCdGsAQ-/0/1749444359355?e=1756944000&v=beta&t=p4rtXdZ1Hz20DNWbvAZ-9DjsGUqEVz4KcXtv8i15wA4" 
+                    alt="RFCSINDIA - Rudra Forensics & CySecurity Pvt. Ltd. Logo"
+                    className="w-16 h-16 rounded-lg border border-cyber-border object-cover"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-cyber-green rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-cyber-blue">Rudra Forensics & CySecurity Pvt. Ltd.( RFCSINDIA )</div>
+                  <div className="text-xs text-gray-400">Cybersecurity Solutions</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3 text-gray-300">
+              <div>
+                <span className="font-medium text-cyber-blue">Company:</span>
+                <span className="ml-2">Rudra Forensics & CySecurity Pvt. Ltd.( RFCSINDIA )</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Application:</span>
+                <span className="ml-2">AUREX Cybersecurity Platform</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Version:</span>
+                <span className="ml-2">1.0.0</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Description:</span>
+                <span className="ml-2">Advanced Unified Platform for Cybersecurity and Forensics Experts,Ethical Hackers, and All Information Experts.</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Website:</span>
+                <span className="ml-2">
+                  <a 
+                    href="https://www.linkedin.com/company/rudra-forensic-cysecurity-pvt-ltd/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyber-blue hover:text-cyber-light underline"
+                  >
+                    Company LinkedIn
+                  </a>
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Established:</span>
+                <span className="ml-2">2024</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Developer Information */}
+          <div className="cyber-panel p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-md font-semibold text-cyber-blue flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Developer Information
+              </h4>
+              {/* Developer Image */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <img 
+                    src="https://media.licdn.com/dms/image/v2/D4E03AQGkhJOhREFXbA/profile-displayphoto-scale_200_200/B4EZerFMy5HcAg-/0/1750921959003?e=1756944000&v=beta&t=XQsFISoixw8sR5KnBA4ggA3I05lj98x2Z_2KAkIxhv4" 
+                    alt="Mr.Ayush Tyagi - Lead Developer & Associate Director of Operations at RFCSINDIA"
+                    className="w-16 h-16 rounded-full border-2 border-cyber-blue object-cover"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-cyber-blue rounded-full flex items-center justify-center">
+                    <Key className="h-3 w-3 text-white" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-cyber-blue">Mr.Ayush Tyagi</div>
+                  <div className="text-xs text-gray-400">Lead Developer</div>
+                  <div className="text-xs text-cyber-green">● Active</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3 text-gray-300">
+              <div>
+                <span className="font-medium text-cyber-blue">Lead Developer:</span>
+                <span className="ml-2">Mr.Ayush Tyagi</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">About:</span>
+                <span className="ml-2">
+                  <a 
+                    href="https://www.linkedin.com/in/ayush-tyagi-96b3b7350/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyber-blue hover:text-cyber-light underline"
+                  >
+                    LinkedIn- Profile
+                  </a>
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Website:</span>
+                <span className="ml-2">
+                  <a 
+                    href="https://linktr.ee/velqore" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyber-blue hover:text-cyber-light underline"
+                  >
+                    Website
+                  </a>
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Development Year:</span>
+                <span className="ml-2">2025</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Information */}
+          <div className="cyber-panel p-6">
+            <h4 className="text-md font-semibold text-cyber-blue mb-3 flex items-center">
+              <Monitor className="h-5 w-5 mr-2" />
+              Technical Stack
+            </h4>
+            <div className="space-y-3 text-gray-300">
+              <div>
+                <span className="font-medium text-cyber-blue">Frontend:</span>
+                <span className="ml-2">Next.js 15, React 18, TypeScript</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Styling:</span>
+                <span className="ml-2">Tailwind CSS, Framer Motion</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Terminal:</span>
+                <span className="ml-2">XTerm.js with real Linux command execution</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Communication:</span>
+                <span className="ml-2">Socket.IO WebSockets</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">Security:</span>
+                <span className="ml-2">JWT Authentication, bcrypt, Rate Limiting</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Features Overview */}
+          <div className="cyber-panel p-6">
+            <h4 className="text-md font-semibold text-cyber-blue mb-3 flex items-center">
+              <Shield className="h-5 w-5 mr-2" />
+              Key Features
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-gray-300">
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Real Linux Terminal</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Threat Intelligence Feed</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Secure Chat System</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>File Vault Management</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>War Room Collaboration</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Admin Panel</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Role-based Access Control</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                <span>Real-time Notifications</span>
+              </div>
+            </div>
+          </div>
+
+          {/* License & Copyright */}
+          <div className="cyber-panel p-6">
+            <h4 className="text-md font-semibold text-cyber-blue mb-3 flex items-center">
+              <Key className="h-5 w-5 mr-2" />
+              License & Copyright
+            </h4>
+            <div className="space-y-3 text-gray-300">
+              <div>
+                <span className="font-medium text-cyber-blue">Copyright:</span>
+                <span className="ml-2">© 2025 Rudra Forensics & CySecurity Pvt. Ltd. ( RFCSINDIA ) All rights reserved.</span>
+              </div>
+              <div>
+                <span className="font-medium text-cyber-blue">License:</span>
+                <span className="ml-2">Proprietary Software</span>
+              </div>
+              <div className="text-sm text-gray-400 mt-4 p-3 bg-cyber-dark border border-cyber-border rounded">
+                This software is the intellectual property of Rudra Forensics & CySecurity Pvt. Ltd. ( RFCSINDIA ). 
+                Unauthorized copying, distribution, or modification is strictly prohibited and deals with legal action.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -741,6 +974,7 @@ export default function Settings({ user }: SettingsProps) {
                 {activeTab === "privacy" && renderPrivacySettings()}
                 {activeTab === "interface" && renderInterfaceSettings()}
                 {activeTab === "data" && renderDataSettings()}
+                {activeTab === "about" && renderAboutSettings()}
               </motion.div>
             </AnimatePresence>
           </div>

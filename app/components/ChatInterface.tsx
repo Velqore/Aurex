@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useAppStore, ChatRoom, ChatMessage } from "../../lib/stores/appStore";
 import { useAuthStore } from "../../lib/stores/authStore";
+import { realTimeUserService, RealTimeUser } from "../../lib/services/realTimeUserService";
 
 interface ChatInterfaceProps {
   user: any;
@@ -54,6 +55,8 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   // Enhanced state management
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [realTimeUsers, setRealTimeUsers] = useState<RealTimeUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
@@ -67,6 +70,10 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [roomToEdit, setRoomToEdit] = useState<ChatRoom | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
+  const [showUserDirectory, setShowUserDirectory] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<RealTimeUser | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chats' | 'users'>('chats');
 
   const currentUser = getCurrentUser();
   const activeChatMessages = activeChat ? messages[activeChat] || [] : [];
@@ -88,6 +95,34 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
 
     return () => clearInterval(connectionInterval);
   }, []);
+
+  // Real-time user management
+  useEffect(() => {
+    console.log('🔄 Setting up real-time user service...');
+    
+    // Subscribe to user updates
+    const unsubscribe = realTimeUserService.subscribe((users) => {
+      console.log('📥 Received user update:', users.length, 'users');
+      setRealTimeUsers(users);
+    });
+
+    // Start periodic refresh (every 30 seconds)
+    const stopRefresh = realTimeUserService.startPeriodicRefresh(30000);
+
+    // Update user status to online when component mounts
+    realTimeUserService.updateUserStatus(true);
+
+    // Update user status to offline when component unmounts
+    return () => {
+      console.log('🔄 Cleaning up real-time user service...');
+      realTimeUserService.updateUserStatus(false);
+      unsubscribe();
+      stopRefresh();
+    };
+  }, []);
+
+  // Update filtered users based on real-time data
+  const filteredUsers = realTimeUserService.searchUsers(userSearchTerm);
 
   // Enhanced message handling (keep only one handleSendMessage)
   const handleSendMessage = useCallback(async () => {
@@ -218,6 +253,48 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     }
     setShowMoreMenu(false);
   }, [activeChat]);
+
+  // User search and profile functions
+  const handleViewProfile = useCallback((user: RealTimeUser) => {
+    setSelectedUserProfile(user);
+    setShowUserProfile(true);
+  }, []);
+
+  const handleStartPrivateChat = useCallback((user: RealTimeUser) => {
+    if (!currentUser) return;
+
+    // Check if private chat already exists
+    const existingChat = chatRooms.find(room => 
+      room.type === 'private' && 
+      room.members.includes(user.id) && 
+      room.members.includes(currentUser.id)
+    );
+
+    if (existingChat) {
+      setActiveChat(existingChat.id);
+      setShowUserProfile(false);
+      return;
+    }
+
+    // Create new private chat
+    const roomId = createChatRoom({
+      name: `${user.firstName} ${user.lastName}`,
+      type: 'private',
+      members: [currentUser.id, user.id],
+      admins: [currentUser.id],
+      description: `Private chat with ${user.username}`,
+      isEncrypted: true,
+      unreadCount: 0,
+      settings: {
+        allowFileSharing: true,
+        retentionDays: 365,
+        maxMembers: 2,
+      },
+    });
+
+    setActiveChat(roomId);
+    setShowUserProfile(false);
+  }, [currentUser, chatRooms, createChatRoom, setActiveChat]);
 
   // Handle room mute/unmute
   const handleMuteRoom = useCallback(() => {
@@ -373,31 +450,62 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     <div className="flex h-full">
       {/* Chat List */}
       <div className="w-80 bg-cyber-gray border-r border-cyber-border flex flex-col">
-        {/* Search */}
+        {/* Tabs */}
         <div className="p-4 border-b border-cyber-border">
+          <div className="flex space-x-2 mb-4">
+            <button
+              onClick={() => setActiveTab('chats')}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'chats'
+                  ? 'bg-cyber-blue text-white'
+                  : 'text-gray-400 hover:text-cyber-blue'
+              }`}
+            >
+              <MessageCircle className="h-4 w-4 inline mr-2" />
+              Chats
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'users'
+                  ? 'bg-cyber-blue text-white'
+                  : 'text-gray-400 hover:text-cyber-blue'
+              }`}
+            >
+              <Users className="h-4 w-4 inline mr-2" />
+              Users
+            </button>
+          </div>
+
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search conversations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={activeTab === 'chats' ? "Search conversations..." : "Search users..."}
+              value={activeTab === 'chats' ? searchTerm : userSearchTerm}
+              onChange={(e) => activeTab === 'chats' ? setSearchTerm(e.target.value) : setUserSearchTerm(e.target.value)}
               className="cyber-input w-full pl-10 py-2"
             />
           </div>
-          <button
-            className="cyber-button mt-2 w-full"
-            onClick={() => setShowCreateRoom(true)}
-            type="button"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Room
-          </button>
+          
+          {activeTab === 'chats' && (
+            <button
+              className="cyber-button mt-2 w-full"
+              onClick={() => setShowCreateRoom(true)}
+              type="button"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Room
+            </button>
+          )}
         </div>
 
-        {/* Chat Rooms */}
+        {/* Content based on active tab */}
         <div className="flex-1 overflow-y-auto">
-          {chatRooms
+          {activeTab === 'chats' ? (
+            /* Chat Rooms */
+            chatRooms
             .filter((room) => room.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map((room) => (
             <motion.button
@@ -445,7 +553,76 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                 )}
               </div>
             </motion.button>
-          ))}
+          ))
+          ) : (
+            /* User Directory - Real Users from Database */
+            <>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <motion.button
+                    key={user.id}
+                    onClick={() => handleViewProfile(user)}
+                    className="w-full p-3 hover:bg-cyber-border transition-colors text-left border-b border-cyber-border/50"
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="flex items-center">
+                      <div className="relative">
+                        <div className="w-10 h-10 bg-gradient-to-br from-cyber-blue to-cyber-purple rounded-full flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">
+                            {user.firstName?.[0] || 'U'}{user.lastName?.[0] || 'U'}
+                          </span>
+                        </div>
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-cyber-gray ${
+                          user.isOnline ? 'bg-cyber-green' : 'bg-gray-500'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0 ml-3">
+                        <div className="flex items-center mb-1">
+                          <span className="font-medium text-cyber-blue truncate">
+                            {user.firstName} {user.lastName}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            @{user.username}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-400 truncate">
+                          {user.department}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            {user.isOnline ? 'Online' : `Last seen ${formatLastActivity(user.lastActive)}`}
+                          </span>
+                          <div className="flex items-center space-x-1">
+                            {user.role === 'admin' && (
+                              <div className="w-2 h-2 bg-cyber-red rounded-full" title="Admin" />
+                            )}
+                            {user.role === 'enterprise' && (
+                              <div className="w-2 h-2 bg-cyber-purple rounded-full" title="Enterprise" />
+                            )}
+                            {user.role === 'pro' && (
+                              <div className="w-2 h-2 bg-cyber-blue rounded-full" title="Pro" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))
+              ) : realTimeUsers.length === 0 ? (
+                <div className="p-4 text-center text-gray-400">
+                  <div className="animate-pulse">
+                    <div className="text-cyber-blue mb-2">🔄 Loading users...</div>
+                    <div className="text-sm">Fetching registered users from database</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-400">
+                  {userSearchTerm ? `No users found matching "${userSearchTerm}"` : 'No other users online'}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -739,6 +916,109 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {showUserProfile && selectedUserProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-cyber-gray rounded-lg p-6 w-96 max-w-md mx-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-cyber-blue">User Profile</h3>
+              <button
+                onClick={() => setShowUserProfile(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Profile Header */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className="w-16 h-16 bg-gradient-to-br from-cyber-blue to-cyber-purple rounded-full flex items-center justify-center">
+                    <span className="text-white text-xl font-bold">
+                      {selectedUserProfile.firstName?.[0] || 'U'}{selectedUserProfile.lastName?.[0] || 'U'}
+                    </span>
+                  </div>
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-cyber-gray ${
+                    selectedUserProfile.isOnline ? 'bg-cyber-green' : 'bg-gray-500'
+                  }`} />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-cyber-blue">
+                    {selectedUserProfile.firstName} {selectedUserProfile.lastName}
+                  </h4>
+                  <p className="text-gray-400">@{selectedUserProfile.username}</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      selectedUserProfile.role === 'admin' ? 'bg-cyber-red text-white' :
+                      selectedUserProfile.role === 'enterprise' ? 'bg-cyber-purple text-white' :
+                      selectedUserProfile.role === 'pro' ? 'bg-cyber-blue text-white' :
+                      'bg-gray-600 text-white'
+                    }`}>
+                      {selectedUserProfile.role?.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {selectedUserProfile.isOnline ? 'Online' : `Last seen ${formatLastActivity(selectedUserProfile.lastActive)}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Details */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-400">Email</label>
+                  <p className="text-cyber-blue">{selectedUserProfile.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-400">Department</label>
+                  <p className="text-cyber-blue">{selectedUserProfile.department}</p>
+                </div>
+                {selectedUserProfile.specializations && selectedUserProfile.specializations.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-400">Specializations</label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedUserProfile.specializations.map((spec: string, index: number) => (
+                        <span key={index} className="px-2 py-1 bg-cyber-border text-cyber-blue text-xs rounded">
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-400">Member Since</label>
+                  <p className="text-cyber-blue">
+                    {selectedUserProfile.joinDate ? new Date(selectedUserProfile.joinDate).toLocaleDateString() : 'Unknown'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => handleStartPrivateChat(selectedUserProfile)}
+                  className="flex-1 cyber-button bg-cyber-blue border-cyber-blue text-white"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Start Chat
+                </button>
+                <button
+                  onClick={() => setShowUserProfile(false)}
+                  className="cyber-button"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

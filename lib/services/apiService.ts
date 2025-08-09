@@ -50,12 +50,12 @@ class ApiService {
 
       const data = await response.json();
 
-            if (!response.ok) {
+      if (!response.ok) {
         return {
           success: false,
           message: data.message || "An error occurred",
           error: data.error,
-          data: data.requiresOtp ? { requiresOtp: true } : undefined,
+          data: data.requiresOtp ? ({ requiresOtp: true } as T) : undefined,
         };
       }
 

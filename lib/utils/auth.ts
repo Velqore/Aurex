@@ -13,7 +13,7 @@ export function generateToken(
   payload: Omit<JWTPayload, "iat" | "exp">,
 ): string {
   return jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    expiresIn: "7d",
   });
 }
 

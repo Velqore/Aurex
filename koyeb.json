@@ -1,0 +1,40 @@
+{
+  "name": "aurex-cyber-platform",
+  "git": {
+    "repository": "github.com/Velqore/Aurex",
+    "branch": "main",
+    "build_command": "npm install && npm run build",
+    "run_command": "npm start"
+  },
+  "instance_types": [
+    "nano"
+  ],
+  "regions": [
+    "fra"
+  ],
+  "ports": [
+    {
+      "port": 3000,
+      "protocol": "http"
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "port": 3000
+    }
+  ],
+  "env": {
+    "REDIS_URL": "redis://default:AXHSAAIncDExYjdhZWQzN2U1OTI0NTI0YjlhYjU4YTNiMDQ3NTU1NXAxMA@reliable-bass-51310.upstash.io:6379",
+    "DATABASE_URL": "postgresql://postgres.fhwkqtxkkvjrjcrwwbjd:Aurex213454@aws-0-ap-south-1.pooler.supabase.com:5432/postgres",
+    "JWT_SECRET": "aurex_super_secret_jwt_key_2024_cyber_security_platform",
+    "EMAIL_HOST": "smtp.gmail.com",
+    "EMAIL_PORT": "587",
+    "EMAIL_USER": "ayushtyagi2213@gmail.com",
+    "EMAIL_PASS": "Aurex213454",
+    "NEXTAUTH_SECRET": "aurex_nextauth_secret_key_for_authentication",
+    "NEXTAUTH_URL": "https://your-app-name.koyeb.app",
+    "API_SECRET_KEY": "aurex_api_secret_2024",
+    "NODE_ENV": "production"
+  }
+}

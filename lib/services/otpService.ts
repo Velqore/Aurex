@@ -166,7 +166,7 @@ class OtpService {
         password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        role: userData.role || "free",
+        role: userData.role === "admin" ? "free" : (userData.role || "free"),
       });
 
       if (response.success && response.data) {

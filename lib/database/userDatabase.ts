@@ -517,7 +517,6 @@ class UserDatabase {
   private saveUsersToFile(): void {
     try {
       const usersData = Array.from(this.users.entries()).map(([email, user]) => ({
-        email,
         ...user,
         joinDate: user.joinDate.toISOString(),
         lastActive: user.lastActive.toISOString(),
@@ -569,7 +568,6 @@ class UserDatabase {
   private saveOtpToFile(): void {
     try {
       const otpData = Array.from(this.otpRequests.entries()).map(([email, otp]) => ({
-        email,
         ...otp,
         expiresAt: otp.expiresAt.toISOString()
       }));

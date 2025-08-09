@@ -13,7 +13,7 @@ export interface TerminalWebSocketData {
 
 export class SecureTerminalService {
   private static instance: SecureTerminalService;
-  private wsServer: WSServer;
+  private wsServer!: WSServer; // Definite assignment assertion
   private sessions: Map<string, {
     ws: any;
     sessionData: TerminalWebSocketData;
