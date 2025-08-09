@@ -3,9 +3,9 @@ import nodemailer from "nodemailer";
 // Create reusable transporter
 const createTransporter = () => {
   if (
-    !process.env.SMTP_HOST ||
-    !process.env.SMTP_USER ||
-    !process.env.SMTP_PASS
+    !process.env.EMAIL_HOST ||
+    !process.env.EMAIL_USER ||
+    !process.env.EMAIL_PASS
   ) {
     console.warn(
       "Email configuration missing. Emails will be logged to console.",
@@ -14,12 +14,12 @@ const createTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT || "587"),
+    secure: process.env.EMAIL_SECURE === "true",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 };
@@ -51,7 +51,7 @@ export async function sendOtpEmail(
 
   try {
     await transporter.sendMail({
-      from: `"CyberSecChat" <${process.env.SMTP_USER}>`,
+      from: `"CyberSecChat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject,
       html,
@@ -78,7 +78,7 @@ export async function sendWelcomeEmail(
 
   try {
     await transporter.sendMail({
-      from: `"CyberSecChat" <${process.env.SMTP_USER}>`,
+      from: `"CyberSecChat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject,
       html,
@@ -105,7 +105,7 @@ export async function sendSecurityAlert(
 
   try {
     await transporter.sendMail({
-      from: `"CyberSecChat Security" <${process.env.SMTP_USER}>`,
+      from: `"CyberSecChat Security" <${process.env.EMAIL_USER}>`,
       to: email,
       subject,
       html,
