@@ -15,24 +15,41 @@ const DEFAULT_ENV_VARS = {
   REDIS_URL: "redis://default:AXHSAAIncDExYjdhZWQzN2U1OTI0NTI0YjlhYjU4YTNiMDQ3NTU1NXAxMA@reliable-bass-51310.upstash.io:6379",
   DATABASE_URL: "postgresql://postgres.fhwkqtxkkvjrjcrwwbjd:Aurex213454@aws-0-ap-south-1.pooler.supabase.com:5432/postgres",
   
-  // JWT Configuration
-  JWT_SECRET: "aurex_super_secret_jwt_key_2024_cyber_security_platform",
-  
-  // Email Configuration (Gmail SMTP)
-  EMAIL_HOST: "smtp.gmail.com",
-  EMAIL_PORT: "587",
-  EMAIL_USER: "ayushtyagi2213@gmail.com",
-  EMAIL_PASS: "Aurex213454",
-  
-  // Application Configuration
-  NEXTAUTH_SECRET: "aurex_nextauth_secret_key_for_authentication",
-  NEXTAUTH_URL: "https://your-app-name.koyeb.app",
-  
-  // API Keys (you can add your own)
-  API_SECRET_KEY: "aurex_api_secret_2024",
-  
-  // Node Environment
-  NODE_ENV: "production"
+ // Authentication
+JWT_SECRET :"ACPAr/iMRwfpLa7udOURK5Rbj/eXtw19NNkj5MG4gQc=",
+JWT_EXPIRES_IN :"7d",
+BCRYPT_ROUNDS:"12",
+
+//Email Configuration
+SMTP_HOST:"smtp.gmail.com",
+SMTP_PORT:"587",
+SMTP_SECURE:false,
+SMTP_USER:"aurex.app@gmail.com",
+SMTP_PASS :"egwc xfuj uphv ascg ",
+
+// # AWS S3 (for file storage)
+// AWS_ACCESS_KEY_ID="your-aws-access-key"
+// AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
+// AWS_S3_BUCKET="cybersecchat-files"
+// AWS_REGION="us-east-1",
+
+// External APIs
+VIRUSTOTAL_API_KEY:"f5269c826123f9d7120c7647a65a2fa4d5f137f1acf623c820accb10f4763c6c",
+THREAT_INTEL_API_KEY :"f5269c826123f9d7120c7647a65a2fa4d5f137f1acf623c820accb10f4763c6c",
+
+// Security
+ENCRYPTION_KEY:"B7piXIp4Gh4Izz5viCVDhOVOl3trzbvV%",
+FILE_ENCRYPTION_KEY:"a2wo1L2ggtAYCoqW06liQ2wVDJ4VA5lR% ",
+
+// Application
+NEXTAUTH_URL:"http://localhost:3001",
+NEXTAUTH_SECRET:"GXcP0fIyTlqAm1cejfSDmEC5zQRkwAkrFLfRIWGMgMk=",
+NODE_ENV:"development",
+
+// Rate Limiting
+RATE_LIMIT_WINDOW_MS:"900000",
+RATE_LIMIT_MAX_REQUESTS:"100"
+
 };
 
 console.log('🚀 AUREX Koyeb Deployment Script');
