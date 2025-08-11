@@ -1,0 +1,51 @@
+{
+  "name": "aurex-cyber-platform",
+  "git": {
+    "repository": "github.com/Velqore/Aurex",
+    "branch": "main",
+    "build_command": "npm install && npm run build",
+    "run_command": "npm start"
+  },
+  "instance_types": [
+    "nano"
+  ],
+  "regions": [
+    "fra"
+  ],
+  "ports": [
+    {
+      "port": 3000,
+      "protocol": "http"
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "port": 3000
+    }
+  ],
+  "env": {
+    "REDIS_URL": "redis://default:AXHSAAIncDExYjdhZWQzN2U1OTI0NTI0YjlhYjU4YTNiMDQ3NTU1NXAxMA@reliable-bass-51310.upstash.io:6379",
+    "DATABASE_URL": "postgresql://postgres:AYUSH200988x@db.mglsmhhtvfzfzukigwge.supabase.co:5432/postgres",
+    "JWT_SECRET": "ACPAr/iMRwfpLa7udOURK5Rbj/eXtw19NNkj5MG4gQc=",
+    "SMTP_HOST": "smtp.gmail.com",
+    "SMTP_PORT": "587",
+    "SMTP_USER": "aurex.app@gmail.com",
+    "SMTP_PASS": "cphhafah goulxhgi",
+    "NEXTAUTH_SECRET": "your-nextauth-secret-here",
+    "NEXTAUTH_URL": "https://aurex-main.koyeb.app",
+    "AWS_ACCESS_KEY_ID": "your-aws-access-key",
+    "AWS_SECRET_ACCESS_KEY": "your-aws-secret-key",
+    "AWS_S3_BUCKET": "cybersecchat-files",
+    "AWS_REGION": "us-east-1",
+    "RATE_LIMIT_WINDOW_MS": "900000",
+    "RATE_LIMIT_MAX_REQUESTS": "100",
+    "NODE_ENV": "production",
+    "API_SECRET_KEY": "aurex_api_2024_K9mX7vR3nQ8pL5wE2yT6uI9oP4sA1dF0",
+    "JWT_EXPIRES_IN": "7d",
+    "VIRUSTOTAL_API_KEY": "1facf02501598489fb5b9bcb3b88c18a4dca3b32f5e040530a8b0fa9a599ac2b",
+    "THREAT_INTEL_API_KEY": "1facf02501598489fb5b9bcb3b88c18a4dca3b32f5e040530a8b0fa9a599ac2b",
+    "ENCRYPTION_KEY": "7f3e9d2a8c5b1e4f6a9c8e2b5d7f0a3c",
+    "FILE_ENCRYPTION_KEY": "2b5e8f1a4d7c0f3a6e9b2c5f8a1d4e7b"
+  }
+}
