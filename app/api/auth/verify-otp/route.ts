@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       const resetToken = jwt.sign(
         { email: identifier, purpose: "password_reset" },
         process.env.JWT_SECRET!,
-        { expiresIn: "15m" },
+        { expiresIn: "30s" },
       );
 
       return NextResponse.json({
