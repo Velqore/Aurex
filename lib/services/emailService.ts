@@ -44,7 +44,7 @@ export async function sendOtpEmail(
     Subject: ${subject}
     OTP Code: ${otpCode}
     Type: ${type}
-    ════════════���══════════���═══════════════
+    ═══════════════════════���═══════════════
     `);
     return;
   }
@@ -166,7 +166,7 @@ function getOtpEmailTemplate(otpCode: string, type: string): string {
         </div>
         
         <p style="color: #ccc; line-height: 1.6;">
-          This code will expire in ${type === "register" ? "2" : "5"} minutes for security reasons.
+          This code will expire in ${type === "register" ? "10" : "5"} minutes for security reasons.
         </p>
         
         <div style="background-color: #000000; background-opacity: 0.1; border: 1px solid #080004; border-radius: 6px; padding: 15px; margin: 20px 0;">
