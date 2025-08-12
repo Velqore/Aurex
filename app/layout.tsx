@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -17,12 +17,16 @@ export const metadata: Metadata = {
     "incident response",
   ],
   authors: [{ name: "Aurex Security" }],
-  viewport: "width=device-width, initial-scale=1",
   openGraph: {
     title: "Aurex - Advanced Security Platform",
     description: "Professional cybersecurity platform with enterprise-grade tools",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -33,7 +37,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0a0a0a" />
         <link rel="icon" href="/favicon.ico" />
       </head>
