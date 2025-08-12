@@ -44,7 +44,7 @@ export async function sendOtpEmail(
     Subject: ${subject}
     OTP Code: ${otpCode}
     Type: ${type}
-    ═══════════════════════���═══════════════
+    ════════════���══════════���═══════════════
     `);
     return;
   }
@@ -169,8 +169,8 @@ function getOtpEmailTemplate(otpCode: string, type: string): string {
           This code will expire in ${type === "register" ? "2" : "5"} minutes for security reasons.
         </p>
         
-        <div style="background-color:rgb(0, 0, 0); background-opacity: 0.1; border: 1px solid rgb(8, 0, 4); border-radius: 6px; padding: 15px; margin: 20px 0;">
-          <p style="color:rgb(17, 0, 7); margin: 0; font-size: 14px;">
+        <div style="background-color: #000000; background-opacity: 0.1; border: 1px solid #080004; border-radius: 6px; padding: 15px; margin: 20px 0;">
+          <p style="color: #110007; margin: 0; font-size: 14px;">
             ⚠️ If you didn't request this code, please ignore this email and consider changing your password.
           </p>
         </div>
