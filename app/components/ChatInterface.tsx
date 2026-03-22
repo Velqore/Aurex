@@ -29,10 +29,12 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  CornerUpLeft,
 } from "lucide-react";
 import { useAppStore, ChatRoom, ChatMessage } from "../../lib/stores/appStore";
 import { useAuthStore } from "../../lib/stores/authStore";
 import { realTimeUserService, RealTimeUser } from "../../lib/services/realTimeUserService";
+import { chatService } from "../../lib/services/chatService";
 
 interface ChatInterfaceProps {
   user: any;
@@ -49,6 +51,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     setActiveChat,
     markMessagesAsRead,
     createChatRoom,
+    clearChatMessages,
   } = useAppStore();
   const { getCurrentUser } = useAuthStore();
 
@@ -74,12 +77,19 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   const [selectedUserProfile, setSelectedUserProfile] = useState<RealTimeUser | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'chats' | 'users'>('chats');
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const currentUser = getCurrentUser();
   const activeChatMessages = activeChat ? messages[activeChat] || [] : [];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const sendInFlightRef = useRef(false);
+
+  useEffect(() => {
+    setReplyToMessage(null);
+  }, [activeChat]);
 
   // Real-time connection simulation and message handling
   useEffect(() => {
@@ -103,13 +113,16 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     // Subscribe to user updates
     const unsubscribe = realTimeUserService.subscribe((users) => {
       console.log('📥 Received user update:', users.length, 'users');
+      console.log('👥 Users:', users.map(u => `${u.username}(${u.isOnline ? '🟢' : '⚫'})`));
       setRealTimeUsers(users);
     });
 
     // Start periodic refresh (every 30 seconds)
+    console.log('⏱️ Starting periodic user refresh...');
     const stopRefresh = realTimeUserService.startPeriodicRefresh(30000);
 
     // Update user status to online when component mounts
+    console.log('🟢 Updating user status to online...');
     realTimeUserService.updateUserStatus(true);
 
     // Update user status to offline when component unmounts
@@ -122,77 +135,181 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   }, []);
 
   // Update filtered users based on real-time data
-  const filteredUsers = realTimeUserService.searchUsers(userSearchTerm);
+  const filteredUsers = realTimeUsers
+    .filter((user) => {
+      // Exclude current user
+      if (currentUser && user.id === currentUser.id) return false;
+      // Search filter
+      if (!userSearchTerm.trim()) return true;
+      const searchTerm = userSearchTerm.toLowerCase();
+      return (
+        user.username.toLowerCase().includes(searchTerm) ||
+        user.email.toLowerCase().includes(searchTerm) ||
+        `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchTerm) ||
+        (user.department || '').toLowerCase().includes(searchTerm)
+      );
+    })
 
-  // Enhanced message handling (keep only one handleSendMessage)
+  // Enhanced message handling
   const handleSendMessage = useCallback(async () => {
     if (!message.trim() || !activeChat || !currentUser) return;
+    if (sendInFlightRef.current) return;
 
-    const newMessage: ChatMessage = {
-      chatId: activeChat,
-      id: Date.now().toString(),
-      senderId: currentUser.id,
-      sender: currentUser.username,
-      content: message.trim(),
-      timestamp: new Date(),
-      type: 'text',
-      encrypted: true,
-    };
+    const messageContent = message.trim();
+    setMessage(""); // Clear input immediately for better UX
+    sendInFlightRef.current = true;
+    setIsSendingMessage(true);
 
     try {
-      await sendMessage(activeChat, newMessage);
-      setMessage("");
+      // Send to API for persistence
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        const response = await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomId: activeChat,
+            content: messageContent,
+            type: 'text',
+            senderName: currentUser.username,
+            replyTo: replyToMessage?.id,
+            metadata: replyToMessage
+              ? {
+                  replyPreview: {
+                    id: replyToMessage.id,
+                    sender: replyToMessage.sender,
+                    content: formatReplyContent(replyToMessage),
+                    type: replyToMessage.type,
+                    fileName: replyToMessage.metadata?.fileName,
+                  },
+                }
+              : undefined,
+          }),
+        });
 
-      // Simulate message delivery (without status property)
-      console.log('Message sent successfully');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Message saved to server:', data.message);
+          setReplyToMessage(null);
+          // Message will be fetched and added to store by polling mechanism
+          // This prevents duplicate messages
+        } else {
+          console.error('⚠️ Failed to save message to server');
+          setMessage(messageContent); // Restore message if failed
+        }
+      }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('❌ Failed to send message:', error);
+      setMessage(messageContent); // Restore message if failed
+    } finally {
+      sendInFlightRef.current = false;
+      setIsSendingMessage(false);
     }
-  }, [message, activeChat, currentUser, sendMessage]);
+  }, [message, activeChat, currentUser, replyToMessage, sendMessage]);
 
   // File upload handler
   const handleFileUpload = useCallback(async (files: FileList) => {
     if (!activeChat || !currentUser) return;
 
-    setIsUploading(true);
-    setUploadProgress(0);
+    const token = localStorage.getItem('auth-token');
+    if (!token) {
+      console.error('No auth token');
+      return;
+    }
 
     for (const file of Array.from(files)) {
       try {
-        // Simulate upload progress
-        const uploadInterval = setInterval(() => {
-          setUploadProgress(prev => {
-            const newProgress = prev + 10;
-            if (newProgress >= 100) {
-              clearInterval(uploadInterval);
-              setIsUploading(false);
-              setUploadProgress(0);
+        const validation = chatService.validateFile(file);
+        if (!validation.valid) {
+          console.error(validation.error || "Invalid file");
+          continue;
+        }
+
+        setIsUploading(true);
+        setUploadProgress(0);
+
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('metadata', JSON.stringify({
+          roomId: activeChat,
+          uploadedBy: currentUser.id,
+          uploadedAt: new Date().toISOString(),
+        }));
+
+        // Upload file to server
+        const uploadResponse = await fetch('/api/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          console.error('File upload failed:', uploadResponse.status);
+          setIsUploading(false);
+          return;
+        }
+
+        const uploadData = await uploadResponse.json();
+        console.log('✅ File uploaded:', uploadData);
+
+        // Determine file type
+        const isImage = file.type.startsWith('image/');
+        const fileUrl = uploadData.filePath;
+
+        // Send message to chat
+        const messageResponse = await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomId: activeChat,
+            content: isImage ? fileUrl : file.name,
+            type: isImage ? 'image' : 'file',
+            senderName: currentUser.username,
+            replyTo: replyToMessage?.id,
+            metadata: {
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              fileUrl: fileUrl,
+              isImage: isImage,
+              replyPreview: replyToMessage
+                ? {
+                    id: replyToMessage.id,
+                    sender: replyToMessage.sender,
+                    content: formatReplyContent(replyToMessage),
+                    type: replyToMessage.type,
+                    fileName: replyToMessage.metadata?.fileName,
+                  }
+                : undefined,
             }
-            return Math.min(newProgress, 100);
-          });
-        }, 200);
+          }),
+        });
 
-        const fileMessage: ChatMessage = {
-          chatId: activeChat,
-          id: Date.now().toString(),
-          senderId: currentUser.id,
-          sender: currentUser.username,
-          content: file.name,
-          timestamp: new Date(),
-          type: 'file',
-          encrypted: true,
-          metadata: {
-            fileName: file.name,
-            fileSize: file.size,
-          }
-        };
-
-        await sendMessage(activeChat, fileMessage);
+        if (messageResponse.ok) {
+          console.log(`📁 ${isImage ? '🖼️' : '📄'} File message sent: ${file.name}`);
+          setUploadProgress(100);
+          setReplyToMessage(null);
+          setTimeout(() => {
+            setIsUploading(false);
+            setUploadProgress(0);
+          }, 500);
+        }
       } catch (error) {
         console.error('Failed to upload file:', error);
+        setIsUploading(false);
+        setUploadProgress(0);
       }
     }
-  }, [activeChat, currentUser, sendMessage]);
+  }, [activeChat, currentUser, replyToMessage]);
 
   // Create new chat room
   const handleCreateRoom = useCallback(async () => {
@@ -256,6 +373,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
 
   // User search and profile functions
   const handleViewProfile = useCallback((user: RealTimeUser) => {
+    console.log('👤 Viewing profile for:', user.username, 'Online:', user.isOnline, 'Last Active:', user.lastActive);
     setSelectedUserProfile(user);
     setShowUserProfile(true);
   }, []);
@@ -263,38 +381,50 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   const handleStartPrivateChat = useCallback((user: RealTimeUser) => {
     if (!currentUser) return;
 
-    // Check if private chat already exists
+    // Generate consistent room ID based on both user IDs
+    const sorted = [currentUser.id, user.id].sort();
+    const consistentRoomId = `private-${sorted[0]}-${sorted[1]}`;
+
+    // Check if private chat already exists with this consistent ID
     const existingChat = chatRooms.find(room => 
-      room.type === 'private' && 
-      room.members.includes(user.id) && 
-      room.members.includes(currentUser.id)
+      room.id === consistentRoomId
     );
 
     if (existingChat) {
-      setActiveChat(existingChat.id);
+      setActiveChat(consistentRoomId);
       setShowUserProfile(false);
       return;
     }
 
-    // Create new private chat
-    const roomId = createChatRoom({
-      name: `${user.firstName} ${user.lastName}`,
+    // Create new private chat with consistent ID
+    const newRoom: ChatRoom = {
+      id: consistentRoomId,
+      name: `${user.firstName || user.username} ${user.lastName || ''}`.trim(),
       type: 'private',
       members: [currentUser.id, user.id],
       admins: [currentUser.id],
       description: `Private chat with ${user.username}`,
       isEncrypted: true,
       unreadCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       settings: {
         allowFileSharing: true,
         retentionDays: 365,
         maxMembers: 2,
       },
-    });
+    };
 
-    setActiveChat(roomId);
+    // Add room directly to store
+    useAppStore.setState((state) => ({
+      chatRooms: [...state.chatRooms, newRoom],
+    }));
+
+    setActiveChat(consistentRoomId);
     setShowUserProfile(false);
-  }, [currentUser, chatRooms, createChatRoom, setActiveChat]);
+    
+    console.log(`🎯 Started private chat with ${user.username} - Room ID: ${consistentRoomId}`);
+  }, [currentUser, chatRooms]);
 
   // Handle room mute/unmute
   const handleMuteRoom = useCallback(() => {
@@ -343,57 +473,113 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     setShowMoreMenu(false);
   }, [activeChat, setActiveChat]);
 
-  // Mock messages for active chat initialization
-  useEffect(() => {
-    if (activeChat && (!messages[activeChat] || messages[activeChat].length === 0)) {
-      const mockMessages: ChatMessage[] = [
-        {
-          id: "1",
-          chatId: activeChat,
-          sender: "System",
-          senderId: "system",
-          content: "End-to-end encryption enabled",
-          timestamp: new Date(Date.now() - 3600000),
-          encrypted: true,
-          type: "system",
-        },
-        {
-          id: "2",
-          chatId: activeChat,
-          sender: "Dr. Sarah Chen",
-          senderId: "user2",
-          content:
-            "I've completed the initial analysis of the suspicious binary. The entropy levels suggest it's packed or encrypted.",
-          timestamp: new Date(Date.now() - 1800000),
-          encrypted: true,
-          type: "text",
-        },
-        {
-          id: "3",
-          chatId: activeChat,
-          sender: user?.username || "You",
-          senderId: currentUser?.id || "current-user",
-          content:
-            "Can you run it through the unpacker? I suspect it might be UPX.",
-          timestamp: new Date(Date.now() - 1500000),
-          encrypted: true,
-          type: "text",
-        },
-        {
-          id: "4",
-          chatId: activeChat,
-          sender: "Dr. Sarah Chen",
-          senderId: "user2",
-          content:
-            "Already tried UPX - no luck. This looks like custom packing. I'll need to reverse engineer it manually.",
-          timestamp: new Date(Date.now() - 1200000),
-          encrypted: true,
-          type: "text",
-        },
-      ];
-      // Mock messages would be handled by the store in a real implementation
+  const handleClearChat = useCallback(async () => {
+    if (!activeChat) return;
+    const confirmed = window.confirm("Clear all messages in this chat?");
+    if (!confirmed) {
+      setShowMoreMenu(false);
+      return;
     }
-  }, [activeChat, user, currentUser?.id]);
+
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`/api/chat/messages?roomId=${activeChat}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        clearChatMessages(activeChat);
+        lastFetchRef.current.clear();
+      } else {
+        console.error('Failed to clear chat:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to clear chat:', error);
+    }
+
+    setShowMoreMenu(false);
+  }, [activeChat, clearChatMessages]);
+
+  // Real-time message fetching with polling - with proper deduplication
+  const lastFetchRef = useRef<Set<string>>(new Set());
+  const lastRoomRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeChat) return;
+
+    // Reset cache when switching rooms
+    if (lastRoomRef.current !== activeChat) {
+      lastFetchRef.current.clear();
+      lastRoomRef.current = activeChat;
+    }
+
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem('auth-token');
+        if (!token) return;
+
+        const response = await fetch(`/api/chat/messages?roomId=${activeChat}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const serverMessages = data.messages || [];
+          
+          // Find truly new messages (not in our cache)
+          const newMessages = serverMessages.filter(
+            (msg: any) => !lastFetchRef.current.has(msg.id)
+          );
+          
+          // Add new message IDs to cache
+          newMessages.forEach((msg: any) => {
+            lastFetchRef.current.add(msg.id);
+          });
+          
+          // Only add new messages to store
+          if (newMessages.length > 0) {
+            console.log(`📨 Got ${newMessages.length} truly new messages`);
+
+            // Add all new messages at once to avoid re-renders
+            newMessages.forEach((msg: any) => {
+              const chatMessage = {
+                chatId: activeChat,
+                senderId: msg.senderId,
+                sender: msg.senderName,
+                content: msg.content,
+                id: msg.id,
+                timestamp: new Date(msg.timestamp),
+                type: (msg.type || 'text') as 'text' | 'file' | 'image' | 'system' | 'command',
+                encrypted: msg.encrypted,
+                metadata: msg.metadata || {},
+                replyTo: msg.replyTo,
+              };
+
+              sendMessage(activeChat, chatMessage);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching messages:', error);
+      }
+    };
+
+    // Fetch messages immediately when room changes
+    fetchMessages();
+
+    // Set up polling - every 2 seconds
+    const refreshInterval = setInterval(fetchMessages, 2000);
+
+    return () => clearInterval(refreshInterval);
+  }, [activeChat, sendMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -404,7 +590,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   }, [messages]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.repeat) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -424,6 +610,31 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  function formatReplyContent(replyMessage?: ChatMessage) {
+    if (!replyMessage) return "Original message not found";
+    if (replyMessage.type === "image") return "[Image]";
+    if (replyMessage.type === "file") return replyMessage.metadata?.fileName || "[File]";
+    const content = replyMessage.content || "";
+    return content.length > 80 ? `${content.slice(0, 80)}...` : content;
+  }
+
+  const renderReplyPreview = (msg: ChatMessage) => {
+    if (!msg.replyTo) return null;
+    const replyMessage = activeChatMessages.find((m) => m.id === msg.replyTo);
+    const preview = msg.metadata?.replyPreview;
+    const sender = replyMessage?.sender || preview?.sender || "Unknown";
+    const content = replyMessage
+      ? formatReplyContent(replyMessage)
+      : preview?.content || "Original message not found";
+
+    return (
+      <div className="mb-2 rounded border-l-2 border-cyber-green/60 bg-cyber-dark/20 px-2 py-1 text-xs text-cyber-blue/80">
+        <div className="font-medium text-cyber-green">{sender}</div>
+        <div className="truncate">{content}</div>
+      </div>
+    );
   };
 
   const formatLastActivity = (date: Date | string | undefined) => {
@@ -618,7 +829,17 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                 </div>
               ) : (
                 <div className="p-4 text-center text-gray-400">
-                  {userSearchTerm ? `No users found matching "${userSearchTerm}"` : 'No other users online'}
+                  {userSearchTerm ? (
+                    <>
+                      <div className="mb-2">❌ No users found matching "{userSearchTerm}"</div>
+                      <div className="text-xs">Try searching by name, username, email, or department</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-2">👥 No other users available</div>
+                      <div className="text-xs">Users will appear here when they join</div>
+                    </>
+                  )}
                 </div>
               )}
             </>
@@ -677,6 +898,9 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                       <button className="w-full flex items-center px-4 py-2 hover:bg-cyber-border" onClick={handleEditRoom} type="button">
                         <Edit3 className="h-4 w-4 mr-2" /> Edit Room
                       </button>
+                      <button className="w-full flex items-center px-4 py-2 hover:bg-cyber-border" onClick={handleClearChat} type="button">
+                        <Trash2 className="h-4 w-4 mr-2" /> Clear Chat
+                      </button>
                       <button className="w-full flex items-center px-4 py-2 hover:bg-cyber-border text-cyber-red" onClick={handleDeleteRoom} type="button">
                         <Trash2 className="h-4 w-4 mr-2" /> Delete Room
                       </button>
@@ -717,7 +941,41 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                               {msg.sender}
                             </div>
                           )}
-                          <div className="text-sm">{msg.content}</div>
+                          {renderReplyPreview(msg)}
+                          {/* Image preview for image messages */}
+                          {msg.type === "image" && msg.metadata?.isImage && (
+                            <div className="mt-2 max-w-xs">
+                              <img
+                                src={msg.content}
+                                alt={msg.metadata?.fileName || "Image"}
+                                className="rounded border border-cyber-blue/30 hover:border-cyber-green/50 cursor-pointer max-w-full max-h-64 object-contain"
+                                title={msg.metadata?.fileName}
+                              />
+                              <div className="text-xs text-cyber-blue/60 mt-1">
+                                {msg.metadata?.fileName}
+                              </div>
+                              {msg.metadata?.fileUrl && (
+                                <div className="flex space-x-2 mt-1">
+                                  <button
+                                    className="p-1 text-cyber-blue hover:text-cyber-green"
+                                    title="Download Image"
+                                    type="button"
+                                    onClick={() => {
+                                      const link = document.createElement("a");
+                                      link.href = msg.metadata?.fileUrl || msg.content;
+                                      link.download = msg.metadata?.fileName || "image";
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {msg.type !== "image" && <div className="text-sm">{msg.content}</div>}
                           {/* File download/copy buttons for file messages */}
                           {msg.type === "file" && msg.metadata && (
                             <div className="flex space-x-2 mt-1">
@@ -725,6 +983,15 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                                 className="p-1 text-cyber-blue hover:text-cyber-green"
                                 title="Download File"
                                 type="button"
+                                onClick={() => {
+                                  if (!msg.metadata?.fileUrl) return;
+                                  const link = document.createElement("a");
+                                  link.href = msg.metadata.fileUrl;
+                                  link.download = msg.metadata?.fileName || "file";
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
                               >
                                 <Download className="h-4 w-4" />
                               </button>
@@ -747,6 +1014,14 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                           >
                             <span>{formatTime(msg.timestamp)}</span>
                             <div className="flex items-center space-x-1">
+                              <button
+                                className="p-1 hover:text-cyber-green"
+                                title="Reply"
+                                type="button"
+                                onClick={() => setReplyToMessage(msg)}
+                              >
+                                <CornerUpLeft className="h-3 w-3" />
+                              </button>
                               {msg.encrypted && <Lock className="h-3 w-3" />}
                               {msg.senderId === currentUser?.id && (
                                 <CheckCheck className="h-3 w-3" />
@@ -764,6 +1039,26 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
 
             {/* Message Input */}
             <div className="p-4 border-t border-cyber-border bg-cyber-gray">
+              {replyToMessage && (
+                <div className="mb-2 flex items-center justify-between rounded border border-cyber-border bg-cyber-dark/30 px-3 py-2 text-xs">
+                  <div>
+                    <div className="text-cyber-green font-medium">
+                      Replying to {replyToMessage.sender}
+                    </div>
+                    <div className="text-cyber-blue/80 truncate max-w-xs">
+                      {formatReplyContent(replyToMessage)}
+                    </div>
+                  </div>
+                  <button
+                    className="p-1 text-gray-400 hover:text-cyber-blue"
+                    type="button"
+                    title="Cancel reply"
+                    onClick={() => setReplyToMessage(null)}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 {/* File Attach Button */}
                 <button
@@ -779,6 +1074,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                   multiple
                   ref={fileInputRef}
                   style={{ display: "none" }}
+                   accept="image/*,.pdf,.txt,.csv,.json,.zip,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     if (e.target.files) {
                       handleFileUpload(e.target.files);
@@ -816,7 +1112,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
                 {/* Send Button */}
                 <button
                   onClick={handleSendMessage}
-                  disabled={!message.trim()}
+                  disabled={!message.trim() || isSendingMessage}
                   className="cyber-button p-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
                   title="Send"

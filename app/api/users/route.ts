@@ -5,10 +5,14 @@ import { User } from "@/lib/types/user";
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('📨 GET /api/users - Fetching user list');
+    
     // Get authorization header
     const authHeader = request.headers.get("authorization");
+    console.log('🔐 Auth Header:', authHeader ? 'Present' : 'Missing');
     
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error('❌ Invalid/missing Bearer token');
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,15 +23,19 @@ export async function GET(request: NextRequest) {
     try {
       const decoded = verifyToken(token);
       if (!decoded) {
+        console.error('❌ Token verification failed');
         return NextResponse.json({ error: "Invalid token" }, { status: 401 });
       }
       currentUserId = decoded.userId;
-    } catch {
+      console.log('✅ Token verified for user:', currentUserId);
+    } catch (error) {
+      console.error('❌ Token verification error:', error);
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     // Get all users except the current user
     const allUsers = await userDatabase.getAllUsers();
+    console.log('📥 Total users in database:', allUsers.length);
     
     // Filter out current user and sensitive data
     const publicUsers = allUsers
@@ -47,6 +55,8 @@ export async function GET(request: NextRequest) {
         // Don't expose sensitive fields like passwordHash, salt, etc.
       }));
 
+    console.log('✅ Returning', publicUsers.length, 'public users');
+
     return NextResponse.json({
       success: true,
       users: publicUsers,
@@ -54,7 +64,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("❌ Error fetching users:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -160,6 +160,13 @@ export default function ToolsPanel({ user }: ToolsPanelProps) {
       icon: Globe,
       category: "Network",
     },
+    {
+      id: "deobfuscate",
+      name: "JS Deobfuscator",
+      description: "Deobfuscate and beautify JavaScript code",
+      icon: Code,
+      category: "Security",
+    },
   ];
 
   const categories = Array.from(new Set(tools.map((tool) => tool.category)));
@@ -534,6 +541,33 @@ export default function ToolsPanel({ user }: ToolsPanelProps) {
               } catch (error) {
                 output.error = `IP lookup failed. ${error instanceof Error ? error.message : ''}`;
               }
+            }
+          }
+          break;
+
+        case "deobfuscate":
+          if (!input.code) {
+            output.error = "Please enter JavaScript code to deobfuscate";
+          } else {
+            try {
+              const response = await fetch('/api/tools/deobfuscate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: input.code }),
+              });
+              
+              const result = await response.json();
+              
+              if (result.success) {
+                output.deobfuscated = result.data.deobfuscated;
+                output.originalSize = result.data.originalSize;
+                output.deobfuscatedSize = result.data.deobfuscatedSize;
+                output.sizeDiff = result.data.originalSize - result.data.deobfuscatedSize;
+              } else {
+                output.error = result.message || 'Deobfuscation failed';
+              }
+            } catch (error) {
+              output.error = `Failed to deobfuscate: ${error instanceof Error ? error.message : 'Unknown error'}`;
             }
           }
           break;
@@ -1535,6 +1569,93 @@ export default function ToolsPanel({ user }: ToolsPanelProps) {
                       <span className="text-gray-400">ASN:</span>
                       <p className="text-white font-mono">{output.asn}</p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {output.error && (
+              <div className="cyber-panel border-cyber-red">
+                <p className="text-cyber-red text-sm">{output.error}</p>
+              </div>
+            )}
+          </div>
+        );
+
+      case "deobfuscate":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-cyber-blue mb-2">
+                Obfuscated JavaScript Code
+              </label>
+              <textarea
+                value={input.code || ""}
+                onChange={(e) =>
+                  handleInputChange(tool.id, "code", e.target.value)
+                }
+                className="cyber-input w-full h-64 resize-none font-mono text-sm"
+                placeholder="Paste obfuscated JavaScript code here..."
+              />
+            </div>
+            <button
+              onClick={() => executeTool(tool.id)}
+              disabled={loading[tool.id]}
+              className="cyber-button flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading[tool.id] ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-cyber-blue border-t-transparent rounded-full"></div>
+                  <span>Deobfuscating...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  <span>Deobfuscate Code</span>
+                </>
+              )}
+            </button>
+            {output.deobfuscated && (
+              <div className="space-y-4">
+                <div className="cyber-panel">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-cyber-blue font-medium">Deobfuscated Code</h3>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(output.deobfuscated, `${tool.id}-result`)
+                      }
+                      className="text-gray-400 hover:text-cyber-blue"
+                    >
+                      {copied === `${tool.id}-result` ? (
+                        <CheckCircle className="h-4 w-4 text-cyber-green" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <pre className="bg-cyber-gray p-4 rounded overflow-x-auto max-h-96 overflow-y-auto">
+                    <code className="text-cyber-green text-sm font-mono">
+                      {output.deobfuscated}
+                    </code>
+                  </pre>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="cyber-panel text-center">
+                    <span className="text-gray-400 text-xs">Original Size</span>
+                    <p className="text-cyber-blue font-bold text-lg mt-1">
+                      {output.originalSize} bytes
+                    </p>
+                  </div>
+                  <div className="cyber-panel text-center">
+                    <span className="text-gray-400 text-xs">Deobfuscated Size</span>
+                    <p className="text-cyber-blue font-bold text-lg mt-1">
+                      {output.deobfuscatedSize} bytes
+                    </p>
+                  </div>
+                  <div className="cyber-panel text-center">
+                    <span className="text-gray-400 text-xs">Size Difference</span>
+                    <p className={`font-bold text-lg mt-1 ${output.sizeDiff > 0 ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                      {output.sizeDiff > 0 ? '-' : '+'}{Math.abs(output.sizeDiff)} bytes
+                    </p>
                   </div>
                 </div>
               </div>

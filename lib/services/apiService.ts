@@ -40,11 +40,19 @@ class ApiService {
     options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     try {
+      // Add auth token to headers if available
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      const headers: any = {
+        "Content-Type": "application/json",
+        ...options.headers,
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
+        headers,
         ...options,
       });
 
@@ -80,28 +88,52 @@ class ApiService {
   ): Promise<
     ApiResponse<{ user: User; token: string; requiresOtp?: boolean }>
   > {
-    return this.request<{ user: User; token: string; requiresOtp?: boolean }>(
+    const response = await this.request<{ user: User; token: string; requiresOtp?: boolean }>(
       "/auth/login",
       {
         method: "POST",
         body: JSON.stringify(credentials),
       },
     );
+
+    // Save token to localStorage if present
+    if (response.success && response.data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('auth-token', response.data.token);
+      console.log('✅ Auth token saved to localStorage');
+    }
+
+    return response;
   }
 
   async register(
     userData: RegisterRequest,
   ): Promise<ApiResponse<{ user: User; token: string }>> {
-    return this.request<{ user: User; token: string }>("/auth/register", {
+    const response = await this.request<{ user: User; token: string }>("/auth/register", {
       method: "POST",
       body: JSON.stringify(userData),
     });
+
+    // Save token to localStorage if present
+    if (response.success && response.data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('auth-token', response.data.token);
+      console.log('✅ Auth token saved to localStorage');
+    }
+
+    return response;
   }
 
   async logout(): Promise<ApiResponse> {
-    return this.request("/auth/logout", {
+    const response = await this.request("/auth/logout", {
       method: "POST",
     });
+
+    // Clear token from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth-token');
+      console.log('✅ Auth token cleared from localStorage');
+    }
+
+    return response;
   }
 
   async sendOtp(
@@ -124,7 +156,7 @@ class ApiService {
       resetToken?: string;
     }>
   > {
-    return this.request<{
+    const response = await this.request<{
       user?: User;
       token?: string;
       emailVerified?: boolean;
@@ -133,6 +165,14 @@ class ApiService {
       method: "POST",
       body: JSON.stringify(request),
     });
+
+    // Save token to localStorage if present
+    if (response.success && response.data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('auth-token', response.data.token);
+      console.log('✅ Auth token saved to localStorage');
+    }
+
+    return response;
   }
 
   // User endpoints

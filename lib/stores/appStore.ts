@@ -9,11 +9,21 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   encrypted: boolean;
-  type: "text" | "file" | "system" | "command";
+  type: "text" | "file" | "image" | "system" | "command";
   metadata?: {
     fileSize?: number;
     fileName?: string;
+    fileType?: string;
     hash?: string;
+    fileUrl?: string;
+    isImage?: boolean;
+    replyPreview?: {
+      id?: string;
+      sender?: string;
+      content?: string;
+      type?: "text" | "file" | "image" | "system" | "command";
+      fileName?: string;
+    };
   };
   reactions?: { [userId: string]: string };
   isEdited?: boolean;
@@ -100,10 +110,12 @@ interface AppState {
   leaveChatRoom: (roomId: string, userId: string) => void;
   sendMessage: (
     chatId: string,
-    message: Omit<ChatMessage, "id" | "timestamp">,
+    message: Omit<ChatMessage, "id" | "timestamp"> &
+      Partial<Pick<ChatMessage, "id" | "timestamp">>,
   ) => void;
   editMessage: (messageId: string, content: string) => void;
   deleteMessage: (messageId: string) => void;
+  clearChatMessages: (chatId: string) => void;
   markMessagesAsRead: (chatId: string) => void;
   setActiveChat: (chatId: string | null) => void;
   setTypingStatus: (chatId: string, userId: string, isTyping: boolean) => void;
@@ -269,7 +281,7 @@ export const useAppStore = create<AppState>()(
             room.id === roomId
               ? {
                   ...room,
-                  members: room.members.filter((id) => id !== userId),
+                  members: room.members.filter((id: string) => id !== userId),
                   updatedAt: new Date(),
                 }
               : room,
@@ -278,24 +290,31 @@ export const useAppStore = create<AppState>()(
       },
 
       sendMessage: (chatId, messageData) => {
-        const messageId = Math.random().toString(36).substr(2, 9);
+        const messageId = messageData.id || Math.random().toString(36).substr(2, 9);
         const message: ChatMessage = {
           ...messageData,
           id: messageId,
-          timestamp: new Date(),
+          timestamp: messageData.timestamp || new Date(),
         };
 
-        set((state) => ({
-          messages: {
-            ...state.messages,
-            [chatId]: [...(state.messages[chatId] || []), message],
-          },
-          chatRooms: state.chatRooms.map((room) =>
-            room.id === chatId
-              ? { ...room, lastMessage: message, updatedAt: new Date() }
-              : room,
-          ),
-        }));
+        set((state) => {
+          const chatMessages = state.messages[chatId] || [];
+          if (chatMessages.some((msg) => msg.id === messageId)) {
+            return state;
+          }
+
+          return {
+            messages: {
+              ...state.messages,
+              [chatId]: [...chatMessages, message],
+            },
+            chatRooms: state.chatRooms.map((room) =>
+              room.id === chatId
+                ? { ...room, lastMessage: message, updatedAt: new Date() }
+                : room,
+            ),
+          };
+        });
       },
 
       editMessage: (messageId, content) => {
@@ -320,6 +339,20 @@ export const useAppStore = create<AppState>()(
               chatId,
               chatMessages.filter((msg) => msg.id !== messageId),
             ]),
+          ),
+        }));
+      },
+
+      clearChatMessages: (chatId) => {
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [chatId]: [],
+          },
+          chatRooms: state.chatRooms.map((room) =>
+            room.id === chatId
+              ? { ...room, lastMessage: undefined, unreadCount: 0, updatedAt: new Date() }
+              : room,
           ),
         }));
       },

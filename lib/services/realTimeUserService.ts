@@ -40,21 +40,29 @@ class RealTimeUserService {
         return [];
       }
 
+      console.log('🔄 Fetching users from API with token...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
       const response = await fetch('/api/users', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
+        console.error('❌ API Error:', response.status, response.statusText);
         throw new Error(`Failed to fetch users: ${response.statusText}`);
       }
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.success && data.users) {
         this.users = data.users.map((user: any) => ({
           ...user,
           joinDate: new Date(user.joinDate),
@@ -66,8 +74,13 @@ class RealTimeUserService {
       } else {
         throw new Error(data.error || 'Failed to fetch users');
       }
-    } catch (error) {
-      console.error('Error fetching real users:', error);
+    } catch (error: any) {
+      const message = error?.message || String(error);
+      if (error?.name === 'AbortError' || /aborted/i.test(message)) {
+        console.warn('⚠️ User fetch aborted (timeout)');
+        return [];
+      }
+      console.error('❌ Error fetching real users:', message);
       return [];
     }
   }

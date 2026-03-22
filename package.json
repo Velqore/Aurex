@@ -36,6 +36,7 @@
     "express-rate-limit": "^8.0.1",
     "framer-motion": "^10.16.16",
     "helmet": "^8.1.0",
+    "js-deobfuscator": "^1.1.7",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.294.0",
     "multer": "^2.0.2",

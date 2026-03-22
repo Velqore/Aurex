@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       console.error("❌ Failed to send OTP email:", emailError);
       
       // In development, return success anyway since OTP is logged to console
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV !== 'production') {
         console.log(`⚠️ [DEV] Returning success despite email failure - OTP logged to console`);
         
         return NextResponse.json({
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: emailError.message || "Failed to send OTP email. Please check your email configuration.",
           otpSent: false,
-          error: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+          error: process.env.NODE_ENV !== 'production' ? emailError.message : undefined
         },
         { status: 500 }
       );
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         message: "Failed to process OTP request",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV !== 'production' ? error.message : undefined
       },
       { status: 500 },
     );
