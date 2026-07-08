@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { terminalDatabase } from '@/lib/database/terminalDatabase';
 
-// Validate JWT_SECRET is configured
-if (!process.env.JWT_SECRET) {
-  throw new Error('CRITICAL: JWT_SECRET environment variable is not set');
+// Resolve the JWT secret at request time. Never throw at module/import time,
+// or `next build` (which imports every route to collect page data) fails when
+// the secret isn't present in the build environment.
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
+  return secret;
 }
-const JWT_SECRET = process.env.JWT_SECRET;
 
 // Close terminal session
 export async function DELETE(
@@ -23,7 +28,7 @@ export async function DELETE(
     let userId: string;
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, getJwtSecret()) as any;
       userId = decoded.userId;
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -70,7 +75,7 @@ export async function GET(
     let userId: string;
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, getJwtSecret()) as any;
       userId = decoded.userId;
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
