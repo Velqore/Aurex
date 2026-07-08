@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+.env.local
+.env*.local
+*.local
+.tmp-*.json
+uploads
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+*.md
