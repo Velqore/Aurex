@@ -58,14 +58,8 @@ const nextConfig = {
       },
     ];
   },
-  webpack: (config, { isServer }) => {
-    // Security: Don't expose source maps in production
-    if (!isServer && process.env.NODE_ENV === "production") {
-      config.devtool = false;
-    }
-
-    return config;
-  },
+  // Security: don't expose client source maps in production
+  productionBrowserSourceMaps: false,
 
   // Redirect HTTP to HTTPS in production
   async redirects() {

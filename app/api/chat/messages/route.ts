@@ -46,12 +46,6 @@ function saveMessages(messages: ChatMessage[]): void {
   }
 }
 
-// Generate consistent room ID for private chats
-function generateRoomId(userId1: string, userId2: string): string {
-  const sorted = [userId1, userId2].sort();
-  return `private-${sorted[0]}-${sorted[1]}`;
-}
-
 // GET endpoint to fetch messages for a specific room
 export async function GET(request: NextRequest) {
   try {
@@ -185,5 +179,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-
-export { generateRoomId };

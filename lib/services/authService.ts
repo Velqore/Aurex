@@ -195,13 +195,11 @@ export function generateAuthToken(payload: {
 }): string {
   validateJWTSecret();
   
-  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-  
-  return jwt.sign(
-    payload,
-    process.env.JWT_SECRET!,
-    { expiresIn }
-  );
+  const options: jwt.SignOptions = {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'],
+  };
+
+  return jwt.sign(payload, process.env.JWT_SECRET!, options);
 }
 
 /**
