@@ -84,7 +84,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   const activeChatMessages = activeChat ? messages[activeChat] || [] : [];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const sendInFlightRef = useRef(false);
 
   useEffect(() => {

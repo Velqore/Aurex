@@ -38,7 +38,7 @@ function loadFileRegistry(): FileRecord[] {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params?: { fileId?: string } }
+  { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
     const user = getUserFromRequest(request);
@@ -49,7 +49,7 @@ export async function GET(
       );
     }
 
-    const fileId = params?.fileId;
+    const { fileId } = await params;
     if (!fileId) {
       return NextResponse.json(
         { success: false, message: "fileId is required" },
