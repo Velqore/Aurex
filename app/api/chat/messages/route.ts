@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/utils/auth";
-import fs from "fs";
-import path from "path";
-
-// Simple file-based message storage
-const messagesFile = path.join(process.cwd(), ".tmp-messages.json");
+import {
+  addMessage,
+  clearRoom,
+  getRoomMessages,
+} from "@/lib/server/messageStore";
 
 export interface ChatMessage {
   id: string;
@@ -25,27 +25,6 @@ export interface ChatMessage {
   replyTo?: string;
 }
 
-function loadMessages(): ChatMessage[] {
-  try {
-    if (fs.existsSync(messagesFile)) {
-      const data = fs.readFileSync(messagesFile, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error("Error loading messages:", error);
-  }
-  return [];
-}
-
-function saveMessages(messages: ChatMessage[]): void {
-  try {
-    fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2));
-    console.log(`💾 Saved ${messages.length} total messages`);
-  } catch (error) {
-    console.error("Error saving messages:", error);
-  }
-}
-
 // GET endpoint to fetch messages for a specific room
 export async function GET(request: NextRequest) {
   try {
@@ -55,31 +34,14 @@ export async function GET(request: NextRequest) {
     }
 
     const roomId = request.nextUrl.searchParams.get("roomId");
-
     if (!roomId) {
       return NextResponse.json(
         { error: "roomId parameter is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const allMessages = loadMessages();
-    
-    // Filter messages for the requested room
-    let roomMessages = allMessages
-      .filter((msg) => msg.roomId === roomId)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    // Remove duplicates (keep only last occurrence of each message ID)
-    const seenIds = new Map<string, ChatMessage>();
-    roomMessages.forEach((msg) => {
-      seenIds.set(msg.id, msg);
-    });
-    
-    roomMessages = Array.from(seenIds.values())
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    console.log(`📨 Retrieved ${roomMessages.length} unique messages for room ${roomId}`);
+    const roomMessages = getRoomMessages(roomId);
 
     return NextResponse.json({
       success: true,
@@ -90,12 +52,12 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching messages:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-// POST endpoint to send a new message
+// POST endpoint to send a new message (REST fallback; real-time path is Socket.io)
 export async function POST(request: NextRequest) {
   try {
     const user = getUserFromRequest(request);
@@ -103,35 +65,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { roomId, content, type = "text", senderName, metadata, replyTo } = await request.json();
+    const { roomId, content, type = "text", senderName, metadata, replyTo } =
+      await request.json();
 
     if (!roomId || !content) {
       return NextResponse.json(
         { error: "roomId and content are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const newMessage: ChatMessage = {
-      id: messageId,
+    const newMessage = addMessage({
       roomId,
       senderId: user.userId,
-      senderName: senderName || user.userId, // Use provided username or fallback to ID
+      senderName: senderName || user.userId,
       content,
-      timestamp: new Date().toISOString(),
-      encrypted: true,
       type,
       metadata,
       replyTo,
-    };
-
-    const allMessages = loadMessages();
-    allMessages.push(newMessage);
-    saveMessages(allMessages);
-
-    console.log(`💬 New message in ${roomId} from ${senderName}: ${content.substring(0, 50)}...`);
+      encrypted: true,
+    });
 
     return NextResponse.json({
       success: true,
@@ -141,7 +94,7 @@ export async function POST(request: NextRequest) {
     console.error("Error saving message:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -158,24 +111,22 @@ export async function DELETE(request: NextRequest) {
     if (!roomId) {
       return NextResponse.json(
         { error: "roomId parameter is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const allMessages = loadMessages();
-    const remainingMessages = allMessages.filter((msg) => msg.roomId !== roomId);
-    saveMessages(remainingMessages);
+    const removed = clearRoom(roomId);
 
     return NextResponse.json({
       success: true,
       message: "Chat cleared",
-      removed: allMessages.length - remainingMessages.length,
+      removed,
     });
   } catch (error) {
     console.error("Error clearing messages:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

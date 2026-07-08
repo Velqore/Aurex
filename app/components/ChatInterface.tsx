@@ -35,6 +35,16 @@ import { useAppStore, ChatRoom, ChatMessage } from "../../lib/stores/appStore";
 import { useAuthStore } from "../../lib/stores/authStore";
 import { realTimeUserService, RealTimeUser } from "../../lib/services/realTimeUserService";
 import { chatService } from "../../lib/services/chatService";
+import {
+  getSocket,
+  joinRoom,
+  leaveRoom,
+  emitMessage,
+  emitTyping,
+  onMessage,
+  onTyping,
+  refreshSocketAuth,
+} from "../../lib/services/socketClient";
 
 interface ChatInterfaceProps {
   user: any;
@@ -52,6 +62,7 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     markMessagesAsRead,
     createChatRoom,
     clearChatMessages,
+    setTypingStatus,
   } = useAppStore();
   const { getCurrentUser } = useAuthStore();
 
@@ -90,6 +101,49 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
   useEffect(() => {
     setReplyToMessage(null);
   }, [activeChat]);
+
+  // Real-time: connect the socket and stream incoming messages into the store.
+  useEffect(() => {
+    if (!currentUser) return;
+
+    getSocket();
+    refreshSocketAuth();
+
+    const unsubscribe = onMessage((msg) => {
+      sendMessage(msg.roomId, {
+        chatId: msg.roomId,
+        senderId: msg.senderId,
+        sender: msg.senderName,
+        content: msg.content,
+        id: msg.id,
+        timestamp: new Date(msg.timestamp),
+        type: (msg.type || "text") as ChatMessage["type"],
+        encrypted: !!msg.encrypted,
+        metadata: msg.metadata || {},
+        replyTo: msg.replyTo,
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
+  // Real-time: broadcast typing status (debounced) for the active room.
+  useEffect(() => {
+    if (!activeChat || !message) return;
+
+    emitTyping(activeChat, true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTyping(activeChat, false);
+    }, 1500);
+
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [message, activeChat]);
 
   // Real-time connection simulation and message handling
   useEffect(() => {
@@ -160,45 +214,60 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
     sendInFlightRef.current = true;
     setIsSendingMessage(true);
 
-    try {
-      // Send to API for persistence
-      const token = localStorage.getItem('auth-token');
-      if (token) {
-        const response = await fetch('/api/chat/messages', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+    const metadata = replyToMessage
+      ? {
+          replyPreview: {
+            id: replyToMessage.id,
+            sender: replyToMessage.sender,
+            content: formatReplyContent(replyToMessage),
+            type: replyToMessage.type,
+            fileName: replyToMessage.metadata?.fileName,
           },
-          body: JSON.stringify({
-            roomId: activeChat,
-            content: messageContent,
-            type: 'text',
-            senderName: currentUser.username,
-            replyTo: replyToMessage?.id,
-            metadata: replyToMessage
-              ? {
-                  replyPreview: {
-                    id: replyToMessage.id,
-                    sender: replyToMessage.sender,
-                    content: formatReplyContent(replyToMessage),
-                    type: replyToMessage.type,
-                    fileName: replyToMessage.metadata?.fileName,
-                  },
-                }
-              : undefined,
-          }),
-        });
+        }
+      : undefined;
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Message saved to server:', data.message);
-          setReplyToMessage(null);
-          // Message will be fetched and added to store by polling mechanism
-          // This prevents duplicate messages
+    try {
+      // Prefer the real-time socket: the server persists once and echoes the
+      // message back to everyone in the room (including us) via `onMessage`.
+      const sentOverSocket = emitMessage({
+        roomId: activeChat,
+        content: messageContent,
+        type: 'text',
+        senderName: currentUser.username,
+        replyTo: replyToMessage?.id,
+        metadata,
+      });
+
+      if (sentOverSocket) {
+        setReplyToMessage(null);
+      } else {
+        // Fallback: no socket -> persist over REST (the poll below picks it up).
+        const token = localStorage.getItem('auth-token');
+        if (token) {
+          const response = await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              roomId: activeChat,
+              content: messageContent,
+              type: 'text',
+              senderName: currentUser.username,
+              replyTo: replyToMessage?.id,
+              metadata,
+            }),
+          });
+
+          if (response.ok) {
+            setReplyToMessage(null);
+          } else {
+            console.error('⚠️ Failed to save message to server');
+            setMessage(messageContent);
+          }
         } else {
-          console.error('⚠️ Failed to save message to server');
-          setMessage(messageContent); // Restore message if failed
+          setMessage(messageContent);
         }
       }
     } catch (error) {
@@ -518,6 +587,12 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
       lastRoomRef.current = activeChat;
     }
 
+    // Join the real-time room and listen for typing indicators.
+    joinRoom(activeChat);
+    const unsubTyping = onTyping((data) => {
+      setTypingStatus(activeChat, data.userId, data.isTyping);
+    });
+
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem('auth-token');
@@ -572,14 +647,18 @@ export default function ChatInterface({ user }: ChatInterfaceProps) {
       }
     };
 
-    // Fetch messages immediately when room changes
+    // Fetch history immediately when room changes.
     fetchMessages();
 
-    // Set up polling - every 2 seconds
-    const refreshInterval = setInterval(fetchMessages, 2000);
+    // Slow poll as a safety net; real-time delivery is handled by the socket.
+    const refreshInterval = setInterval(fetchMessages, 8000);
 
-    return () => clearInterval(refreshInterval);
-  }, [activeChat, sendMessage]);
+    return () => {
+      clearInterval(refreshInterval);
+      unsubTyping();
+      leaveRoom(activeChat);
+    };
+  }, [activeChat, sendMessage, setTypingStatus]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
