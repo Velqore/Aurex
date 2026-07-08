@@ -2,48 +2,13 @@ import { User } from "../types/user";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { DatabaseUser, IUserDatabase, OtpRequest } from "./userTypes";
+import { PgUserDatabase } from "./pgUserDatabase";
 
-export interface DatabaseUser {
-  id: string;
-  username: string;
-  email: string;
-  passwordHash: string;
-  salt: string;
-  role: "admin" | "pro" | "enterprise" | "free";
-  avatar?: string;
-  firstName?: string;
-  lastName?: string;
-  department?: string;
-  specializations: string[];
-  joinDate: Date;
-  lastActive: Date;
-  isOnline: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  phoneVerified: boolean;
-  twoFactorEnabled: boolean;
-  preferences: any;
-  statistics: any;
-  subscription?: any;
+// Re-exported for backwards compatibility with existing imports.
+export type { DatabaseUser, OtpRequest };
 
-  // OTP related fields
-  otpSecret?: string;
-  pendingOtp?: {
-    code: string;
-    type: "login" | "register" | "password_reset";
-    expiresAt: Date;
-    attempts: number;
-  };
-}
-
-export interface OtpRequest {
-  email: string;
-  type: "login" | "register" | "password_reset";
-  code: string;
-  expiresAt: Date;
-}
-
-class UserDatabase {
+class UserDatabase implements IUserDatabase {
   private users: Map<string, DatabaseUser> = new Map();
   private otpRequests: Map<string, OtpRequest> = new Map();
     private instanceId: string;
@@ -643,8 +608,19 @@ class UserDatabase {
   }
 }
 
-// Create singleton instance
-export const userDatabase = new UserDatabase();
+// Select storage backend: PostgreSQL when DATABASE_URL is configured,
+// otherwise the in-memory store (development / no-DB fallback).
+export const userDatabase: IUserDatabase = process.env.DATABASE_URL
+  ? new PgUserDatabase()
+  : new UserDatabase();
+
+if (process.env.DATABASE_URL) {
+  console.log("🗄️  User store: PostgreSQL");
+} else {
+  console.warn(
+    "🗄️  User store: in-memory (set DATABASE_URL to persist users across restarts / instances)",
+  );
+}
 
 // Auto cleanup expired OTPs every minute
 setInterval(() => {

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { userDatabase } from "../../../../lib/database/userDatabase";
 import { rateLimit } from "../../../../lib/middleware/rateLimit";
@@ -70,15 +69,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password
-    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || "12");
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Create user
+    // Create user. NOTE: createUser() hashes the password internally (PBKDF2 +
+    // per-user salt), which is what login verification checks against. Do NOT
+    // pre-hash here or the stored hash won't match at login time.
     const userData = {
       username,
       email: email.toLowerCase(),
-      password: hashedPassword,
+      password,
       firstName,
       lastName,
       role: role as "admin" | "pro" | "enterprise" | "free",
