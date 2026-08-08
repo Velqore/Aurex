@@ -5,16 +5,44 @@
 
 import { Pool } from 'pg';
 
-// Database configuration
-const config = {
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : undefined,
-  max: 20, // Maximum number of clients in pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-};
+function resolveDatabaseUrl(): string {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) {
+    throw new Error('Database not configured: DATABASE_URL is missing');
+  }
+
+  // Handle accidental wrapping quotes/spaces from platform env editors.
+  const trimmed = raw.trim().replace(/^["']|["']$/g, '');
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error('Database not configured: DATABASE_URL is not a valid URL');
+  }
+
+  if (!parsed.protocol || (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:')) {
+    throw new Error('Database not configured: DATABASE_URL must start with postgres:// or postgresql://');
+  }
+
+  if (!parsed.hostname) {
+    throw new Error('Database not configured: DATABASE_URL hostname is missing');
+  }
+
+  return trimmed;
+}
+
+function createPoolConfig() {
+  return {
+    connectionString: resolveDatabaseUrl(),
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : undefined,
+    max: 20, // Maximum number of clients in pool
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
+}
 
 // Create connection pool
 let pool: Pool | null = null;
@@ -28,7 +56,7 @@ export function getPool(): Pool {
       console.warn('DATABASE_URL not configured. Using in-memory storage.');
       throw new Error('Database not configured');
     }
-    pool = new Pool(config);
+    pool = new Pool(createPoolConfig());
     
     // Handle connection errors
     pool.on('error', (err: Error) => {
