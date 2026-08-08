@@ -679,14 +679,14 @@ export default function Settings({ user }: SettingsProps) {
             <div className="flex items-center justify-between mb-6">
               <h4 className="text-md font-semibold text-cyber-blue flex items-center">
                 <Globe className="h-5 w-5 mr-2" />
-                Company Information
+                Partner Information
               </h4>
               {/* Company Logo */}
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   <img 
                     src="https://media.licdn.com/dms/image/v2/D560BAQEqsudrfYluXQ/company-logo_100_100/B56ZdTAnCdGsAQ-/0/1749444359355?e=1756944000&v=beta&t=p4rtXdZ1Hz20DNWbvAZ-9DjsGUqEVz4KcXtv8i15wA4" 
-                    alt="RFCSINDIA - Rudra Forensics & CySecurity Pvt. Ltd. Logo"
+                    alt="Partner's profile image"
                     className="w-16 h-16 rounded-lg border border-cyber-border object-cover"
                   />
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-cyber-green rounded-full flex items-center justify-center">
@@ -694,15 +694,15 @@ export default function Settings({ user }: SettingsProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium text-cyber-blue">Rudra Forensics & CySecurity Pvt. Ltd.( RFCSINDIA )</div>
+                  <div className="text-sm font-medium text-cyber-blue">Vaibhav Saini</div>
                   <div className="text-xs text-gray-400">Cybersecurity Solutions</div>
                 </div>
               </div>
             </div>
             <div className="space-y-3 text-gray-300">
               <div>
-                <span className="font-medium text-cyber-blue">Company:</span>
-                <span className="ml-2">Rudra Forensics & CySecurity Pvt. Ltd.( RFCSINDIA )</span>
+                <span className="font-medium text-cyber-blue">Partner:</span>
+                <span className="ml-2">Vaibhav Saini</span>
               </div>
               <div>
                 <span className="font-medium text-cyber-blue">Application:</span>
@@ -720,18 +720,18 @@ export default function Settings({ user }: SettingsProps) {
                 <span className="font-medium text-cyber-blue">Website:</span>
                 <span className="ml-2">
                   <a 
-                    href="https://www.linkedin.com/company/rudra-forensic-cysecurity-pvt-ltd/" 
+                    href="" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-cyber-blue hover:text-cyber-light underline"
                   >
-                    Company LinkedIn
+                    LinkedIn
                   </a>
                 </span>
               </div>
               <div>
                 <span className="font-medium text-cyber-blue">Established:</span>
-                <span className="ml-2">2024</span>
+                <span className="ml-2">2026</span>
               </div>
             </div>
           </div>
@@ -784,7 +784,7 @@ export default function Settings({ user }: SettingsProps) {
                 <span className="font-medium text-cyber-blue">Website:</span>
                 <span className="ml-2">
                   <a 
-                    href="https://linktr.ee/velqore" 
+                    href="https://ayush-tyagi.base44.app/" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-cyber-blue hover:text-cyber-light underline"
@@ -799,7 +799,6 @@ export default function Settings({ user }: SettingsProps) {
               </div>
             </div>
           </div>
-
           {/* Technical Information */}
           <div className="cyber-panel p-6">
             <h4 className="text-md font-semibold text-cyber-blue mb-3 flex items-center">
