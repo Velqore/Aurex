@@ -28,6 +28,7 @@ type AuthStep =
   | "otp-verification"
   | "registration-details";
 type AuthMethod = "password" | "otp";
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function AuthForm({ onLogin }: AuthFormProps) {
   const { login, register, isLoading } = useAuthStore();
@@ -36,6 +37,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
   const [authMethod, setAuthMethod] = useState<AuthMethod>("password");
   const [showPassword, setShowPassword] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+  const [resendTimer, setResendTimer] = useState(0);
   const [canResendOtp, setCanResendOtp] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -55,12 +57,27 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
   const [authLoading, setAuthLoading] = useState(false);
   const [authSuccess, setAuthSuccess] = useState("");
 
-  // OTP timer effect
+  // OTP expiry timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (otpTimer > 0) {
       interval = setInterval(() => {
         setOtpTimer((prev) => {
+          if (prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer]);
+
+  // Resend cooldown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      setCanResendOtp(false);
+      interval = setInterval(() => {
+        setResendTimer((prev) => {
           if (prev <= 1) {
             setCanResendOtp(true);
             return 0;
@@ -70,7 +87,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [otpTimer]);
+  }, [resendTimer]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -114,6 +131,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
         setOtpSentTo(formData.identifier);
         setCurrentStep("otp-verification");
         setOtpTimer(300); // 5 minutes
+        setResendTimer(RESEND_COOLDOWN_SECONDS); // 1 minute
         setCanResendOtp(false);
         setAuthSuccess("OTP sent to your email for two-factor authentication.");
       } else {
@@ -145,6 +163,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
         setOtpSentTo(formData.identifier);
         setCurrentStep("otp-verification");
         setOtpTimer(result.expiresIn || 300);
+        setResendTimer(RESEND_COOLDOWN_SECONDS);
         setCanResendOtp(false);
         setAuthSuccess(result.message);
       } else if (result.success && !result.otpSent) {
@@ -235,6 +254,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
         setOtpSentTo(formData.email);
         setCurrentStep("otp-verification");
         setOtpTimer(result.expiresIn || 600);
+        setResendTimer(RESEND_COOLDOWN_SECONDS);
         setCanResendOtp(false);
         setAuthSuccess(result.message);
       } else {
@@ -359,6 +379,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
 
       if (result.success) {
         setOtpTimer(result.expiresIn || 300);
+        setResendTimer(RESEND_COOLDOWN_SECONDS);
         setCanResendOtp(false);
         setAuthSuccess("New verification code sent!");
       } else {
@@ -606,6 +627,11 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
         >
           Resend Code
         </button>
+        {!canResendOtp && resendTimer > 0 && (
+          <div className="mt-1 text-xs text-gray-500">
+            You can resend in {formatTime(resendTimer)}
+          </div>
+        )}
       </div>
 
       {/* Back Button */}
