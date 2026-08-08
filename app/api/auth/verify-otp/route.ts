@@ -84,6 +84,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (!jwtSecret) {
+        console.error("JWT_SECRET is not configured");
+        return NextResponse.json(
+          { success: false, message: "Server authentication is misconfigured" },
+          { status: 500 },
+        );
+      }
+
       // Update login statistics
       await userDatabase.updateLoginStats(email);
 
@@ -94,7 +102,7 @@ export async function POST(request: NextRequest) {
           email: user.email,
           role: user.role,
         },
-        process.env.JWT_SECRET!,
+        jwtSecret,
         { expiresIn: "7d" }
       );
 
@@ -127,10 +135,18 @@ export async function POST(request: NextRequest) {
         emailVerified: true,
       });
     } else if (type === "password_reset") {
+      if (!jwtSecret) {
+        console.error("JWT_SECRET is not configured");
+        return NextResponse.json(
+          { success: false, message: "Server authentication is misconfigured" },
+          { status: 500 },
+        );
+      }
+
       // For password reset, return a temporary token
       const resetToken = jwt.sign(
         { email: identifier, purpose: "password_reset" },
-        process.env.JWT_SECRET!,
+        jwtSecret,
         { expiresIn: "30s" },
       );
 
@@ -153,3 +169,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+    const jwtSecret = process.env.JWT_SECRET;

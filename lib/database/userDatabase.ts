@@ -11,17 +11,31 @@ export type { DatabaseUser, OtpRequest };
 class UserDatabase implements IUserDatabase {
   private users: Map<string, DatabaseUser> = new Map();
   private otpRequests: Map<string, OtpRequest> = new Map();
-    private instanceId: string;
+  private instanceId: string;
   private otpStoragePath: string;
   private usersStoragePath: string;
+  private filePersistenceEnabled: boolean;
 
   constructor() {
     this.instanceId = Math.random().toString(36).substr(2, 9);
-    this.otpStoragePath = path.join(process.cwd(), '.tmp-otp-storage.json');
-    this.usersStoragePath = path.join(process.cwd(), '.tmp-users-storage.json');
+    this.otpStoragePath = path.join(process.cwd(), ".tmp-otp-storage.json");
+    this.usersStoragePath = path.join(process.cwd(), ".tmp-users-storage.json");
+    this.filePersistenceEnabled = this.canPersistToDisk();
     this.initializeDefaultUsers();
     this.loadUsersFromFile();
     this.loadOtpFromFile();
+  }
+
+  private canPersistToDisk(): boolean {
+    try {
+      fs.accessSync(process.cwd(), fs.constants.W_OK);
+      return true;
+    } catch {
+      console.warn(
+        "⚠️ File persistence disabled: current environment is read-only",
+      );
+      return false;
+    }
   }
 
   private initializeDefaultUsers() {
@@ -483,6 +497,8 @@ class UserDatabase implements IUserDatabase {
 
       // File-based user storage for development persistence
   private saveUsersToFile(): void {
+    if (!this.filePersistenceEnabled) return;
+
     try {
       const usersData = Array.from(this.users.entries()).map(([email, user]) => ({
         ...user,
@@ -501,9 +517,11 @@ class UserDatabase implements IUserDatabase {
   }
 
   private loadUsersFromFile(): void {
+    if (!this.filePersistenceEnabled) return;
+
     try {
       if (fs.existsSync(this.usersStoragePath)) {
-        const data = fs.readFileSync(this.usersStoragePath, 'utf8');
+        const data = fs.readFileSync(this.usersStoragePath, "utf8");
         const usersArray = JSON.parse(data);
 
         let loadedCount = 0;
@@ -526,7 +544,7 @@ class UserDatabase implements IUserDatabase {
         console.log(`📂 Loaded ${loadedCount} user(s) from file`);
       }
     } catch (error) {
-      console.error('Failed to load users from file:', error);
+      console.error("Failed to load users from file:", error);
       // Create empty file if it doesn't exist or is corrupted
       this.saveUsersToFile();
     }
@@ -534,6 +552,8 @@ class UserDatabase implements IUserDatabase {
 
   // File-based OTP storage for development persistence
   private saveOtpToFile(): void {
+    if (!this.filePersistenceEnabled) return;
+
     try {
       const otpData = Array.from(this.otpRequests.entries()).map(([email, otp]) => ({
         ...otp,
@@ -547,9 +567,11 @@ class UserDatabase implements IUserDatabase {
   }
 
   private loadOtpFromFile(): void {
+    if (!this.filePersistenceEnabled) return;
+
     try {
       if (fs.existsSync(this.otpStoragePath)) {
-        const data = fs.readFileSync(this.otpStoragePath, 'utf8');
+        const data = fs.readFileSync(this.otpStoragePath, "utf8");
         const otpArray = JSON.parse(data);
 
         // Clean up expired OTPs while loading
