@@ -83,6 +83,15 @@ export async function POST(request: NextRequest) {
 
     const newUser = await userDatabase.createUser(userData);
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("JWT_SECRET is not configured");
+      return NextResponse.json(
+        { success: false, message: "Server authentication is misconfigured" },
+        { status: 500 },
+      );
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -90,7 +99,7 @@ export async function POST(request: NextRequest) {
         email: newUser.email,
         role: newUser.role,
       },
-      process.env.JWT_SECRET!,
+      jwtSecret,
       { expiresIn: "7d" }
     );
 
