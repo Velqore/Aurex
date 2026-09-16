@@ -45,7 +45,7 @@ class UserDatabase implements IUserDatabase {
     const adminUser: DatabaseUser = {
       id: adminId,
       username: "admin",
-      email: "admin@cybersecchat.com",
+      email: "ayushtyagi5544@gmail.com",
       passwordHash: this.hashPassword("admin123", adminSalt),
       salt: adminSalt,
       role: "admin",
